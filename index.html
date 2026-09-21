@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PowerGrid Simulator — Energy Distribution System</title>
+  <meta name="description" content="A dynamic Power Grid Simulator web application to model and visualize energy distribution systems, calculate shortest paths, and manage power allocation.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-content">
+      <h1>⚡ PowerGrid Simulator</h1>
+      <nav class="main-nav">
+        <button class="nav-tab active" id="nav-grid-builder" data-section="section-grid-builder">🔧 Grid Builder</button>
+        <button class="nav-tab" id="nav-shortest-path" data-section="section-shortest-path">🗺️ Shortest Path</button>
+        <button class="nav-tab" id="nav-power-dist" data-section="section-power-dist">⚡ Power Distribution</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <main>
+    <section id="section-grid-builder" class="section active">
+      <div class="content-grid">
+        <div class="panel">
+          <div class="panel-header"><span class="panel-icon">📦</span> Add Node</div>
+          <div class="panel-body">
+            <div class="form-group">
+              <label class="form-label" for="node-type-select">Node Type</label>
+              <select class="form-select" id="node-type-select">
+                <option value="source">⚡ Power Source</option>
+                <option value="station">🏭 Power Station</option>
+                <option value="substation">🔌 Substation</option>
+                <option value="load">🏠 Load</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="node-name-input">Name</label>
+              <input class="form-input" type="text" id="node-name-input" placeholder="e.g. Main Plant">
+            </div>
+            <div id="dynamic-fields">
+              <!-- JS will populate type-specific fields here -->
+            </div>
+            <button class="btn btn-primary" id="add-node-btn">➕ Add Node</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><span class="panel-icon">🔗</span> Add Connection</div>
+          <div class="panel-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="conn-source-input">Source ID</label>
+                <select class="form-select" id="conn-source-input">
+                  <option value="" disabled selected>Select Source Node...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="conn-dest-input">Destination ID</label>
+                <select class="form-select" id="conn-dest-input">
+                  <option value="" disabled selected>Select Dest Node...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="conn-weight-input">Weight</label>
+                <input class="form-input" type="number" id="conn-weight-input" placeholder="e.g. 5" min="0.1" step="0.1">
+              </div>
+            </div>
+            <button class="btn btn-primary" id="add-conn-btn">🔗 Add Connection</button>
+          </div>
+        </div>
+
+        <div class="panel full-width">
+          <div class="panel-header">
+            <span><span class="panel-icon">📋</span> Nodes</span>
+            <span class="node-count" id="node-count">0 nodes</span>
+          </div>
+          <div class="panel-body">
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Type</th>
+                    <th>Name</th>
+                    <th>Details</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="node-table-body">
+                  <!-- JS populates -->
+                </tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="nodes-empty">
+              <div class="empty-icon">📦</div>
+              <p>No nodes added yet. Add your first node above.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel full-width">
+          <div class="panel-header">
+            <span><span class="panel-icon">🔗</span> Connections</span>
+            <span class="conn-count" id="conn-count">0 connections</span>
+          </div>
+          <div class="panel-body">
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Source</th>
+                    <th>Destination</th>
+                    <th>Weight</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="conn-table-body">
+                  <!-- JS populates -->
+                </tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="conns-empty">
+              <div class="empty-icon">🔗</div>
+              <p>No connections added yet. Add connections above.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel full-width">
+          <div class="panel-header"><span class="panel-icon">💾</span> Grid Actions</div>
+          <div class="panel-body">
+            <div class="btn-group">
+              <button class="btn btn-primary" id="save-grid-btn">💾 Save Grid</button>
+              <button class="btn btn-secondary" id="export-grid-btn">📤 Export JSON</button>
+              <button class="btn btn-secondary" id="import-grid-btn">📥 Import JSON</button>
+              <input type="file" id="import-grid-input" class="file-input-hidden" accept=".json">
+              <button class="btn btn-success" id="load-sample-btn">🧪 Load Sample Grid</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-shortest-path" class="section">
+      <div class="empty-state" id="sp-no-grid-msg">
+        <div class="empty-icon">🗺️</div>
+        <p>No grid saved. Go to Grid Builder and save a grid first.</p>
+      </div>
+
+      <div id="sp-content" style="display:none;">
+        <div class="controls-bar">
+          <select class="form-select" id="algorithm-select">
+            <option value="dijkstra">Dijkstra's Algorithm</option>
+            <option value="bellman-ford">Bellman-Ford Algorithm</option>
+            <option value="floyd-warshall">Floyd-Warshall Algorithm</option>
+          </select>
+          <button class="btn btn-primary" id="run-algorithm-btn">▶️ Run Algorithm</button>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span><span class="panel-icon">🗺️</span> Graph Visualization</span>
+            <div class="graph-legend" id="sp-legend">
+              <div class="legend-item"><span class="legend-color" style="background:var(--source-color)"></span> Power Source</div>
+              <div class="legend-item"><span class="legend-color" style="background:var(--station-color)"></span> Power Station</div>
+              <div class="legend-item"><span class="legend-color" style="background:var(--substation-color)"></span> Substation</div>
+              <div class="legend-item"><span class="legend-color" style="background:var(--load-color)"></span> Load</div>
+              <div class="legend-item"><span class="legend-color" style="background:var(--success)"></span> Shortest Path</div>
+            </div>
+          </div>
+          <div class="panel-body graph-container">
+            <svg id="sp-graph-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><span class="panel-icon">📊</span> Shortest Path Results</div>
+          <div class="panel-body">
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Load</th>
+                    <th>Priority</th>
+                    <th>Demand (MW)</th>
+                    <th>Path</th>
+                    <th>Distance</th>
+                  </tr>
+                </thead>
+                <tbody id="sp-results-body">
+                  <!-- JS populates -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-power-dist" class="section">
+      <div class="empty-state" id="pd-no-grid-msg">
+        <div class="empty-icon">⚡</div>
+        <p>No grid saved. Go to Grid Builder and save a grid first.</p>
+      </div>
+
+      <div id="pd-content" style="display:none;">
+        <div class="sim-controls">
+          <div class="form-group" style="margin-bottom:0;flex:0 0 auto;">
+            <label class="form-label" for="total-energy-input">Total Available Energy (MW)</label>
+            <input class="form-input" type="number" id="total-energy-input" value="100" min="0" step="1" style="width:180px;">
+          </div>
+          <div class="btn-group" style="margin-left:auto;">
+            <button class="btn btn-success" id="start-sim-btn">▶️ Start Simulation</button>
+            <button class="btn btn-secondary" id="step-sim-btn">⏭️ Step</button>
+            <button class="btn btn-danger" id="reset-sim-btn">🔄 Reset</button>
+          </div>
+        </div>
+
+        <div class="content-grid">
+          <div class="panel full-width">
+            <div class="panel-header">
+              <span><span class="panel-icon">🗺️</span> Grid Visualization</span>
+              <div class="energy-display">Remaining: <span id="remaining-energy-display">0</span> MW</div>
+            </div>
+            <div class="panel-body graph-container">
+              <svg id="pd-graph-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="content-grid">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-icon">📊</span> Priority Queue</div>
+            <div class="panel-body">
+              <div class="queue-container" id="priority-queue-list">
+                <!-- JS populates -->
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header"><span class="panel-icon">📈</span> Allocation Results</div>
+            <div class="panel-body">
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Load</th>
+                      <th>Priority</th>
+                      <th>Demand</th>
+                      <th>Allocated</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pd-results-body">
+                    <!-- JS populates -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card supplied">
+            <div class="stat-value" id="total-supplied-display">0</div>
+            <div class="stat-label">Total Supplied (MW)</div>
+          </div>
+          <div class="stat-card demand">
+            <div class="stat-value" id="total-demand-display">0</div>
+            <div class="stat-label">Total Demand (MW)</div>
+          </div>
+          <div class="stat-card remaining">
+            <div class="stat-value" id="total-remaining-display">0</div>
+            <div class="stat-label">Remaining (MW)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
