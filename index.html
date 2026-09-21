@@ -5,13 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PowerGrid Simulator — Energy Distribution System</title>
   <meta name="description" content="A dynamic Power Grid Simulator web application to model and visualize energy distribution systems, calculate shortest paths, and manage power allocation.">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
 </head>
 <body>
 
   <header class="app-header">
     <div class="header-content">
-      <h1>⚡ PowerGrid Simulator</h1>
+      <h1>PowerGrid Simulator</h1>
       <nav class="main-nav">
         <button class="nav-tab active" id="nav-grid-builder" data-section="section-grid-builder">🔧 Grid Builder</button>
         <button class="nav-tab" id="nav-shortest-path" data-section="section-shortest-path">🗺️ Shortest Path</button>
@@ -283,6 +286,26 @@
     </section>
   </main>
 
-  <script src="script.js"></script>
+  <script type="module" src="js/main.js"></script>
+  <script>
+    // Universal protocol compatibility:
+    // When opened directly via file:// in browsers where ES Modules are blocked by CORS,
+    // or if module loading fails, automatically load the bundle fallback.
+    if (window.location.protocol === 'file:') {
+      const fallback = document.createElement('script');
+      fallback.src = 'js/bundle.js';
+      document.body.appendChild(fallback);
+    } else {
+      window.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+          if (!window.__powerGridInitialized) {
+            const fallback = document.createElement('script');
+            fallback.src = 'js/bundle.js';
+            document.body.appendChild(fallback);
+          }
+        }, 150);
+      });
+    }
+  </script>
 </body>
 </html>

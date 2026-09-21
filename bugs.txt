@@ -1,0 +1,166 @@
+================================================================================
+POWER GRID SIMULATOR - BUG REPORT & RESOLUTION LOG (bugs.txt)
+================================================================================
+Generated: 2026-09-21
+Project Path: C:\Users\Mayur\OneDrive\Desktop\PowerStationProject
+
+SUMMARY OF RESOLUTIONS:
+All bugs explored by the previous agents and discovered during the comprehensive
+audit have been fully resolved and verified across the codebase.
+The application now supports both:
+1. Native ES Modules when served over HTTP/HTTPS (Live Server / Python).
+2. Direct local file execution via file:// without web server requirements.
+
+--------------------------------------------------------------------------------
+1. CRITICAL: NAVIGATION BAR BUTTONS NOT FUNCTIONING
+--------------------------------------------------------------------------------
+- Description: Clicking the navigation buttons (🔧 Grid Builder, 🗺️ Shortest Path,
+  ⚡ Power Distribution) failed to switch sections or produced errors.
+- Root Causes Identified:
+  1. Attribute mismatch: Initial refactor code in main.js searched for `data-target`
+     instead of the actual HTML attribute `data-section`.
+  2. Display property clash: Nav script used inline `style.display = 'block'/'none'`,
+     which clashed with CSS `.section.active` display rules.
+  3. Module loading failure on file:// protocol: Browsers block `<script type="module">`
+     on file:/// URLs with CORS errors, causing the entire script to fail to execute
+     when users double-click index.html.
+- Actions Taken:
+  1. Fixed main.js and bundle.js to query `tab.getAttribute('data-section')`.
+  2. Replaced inline styles with clean class toggling: `.classList.remove('active')`
+     and `.classList.add('active')` on both nav tabs and section elements.
+  3. Added universal compatibility fallback in index.html and created js/bundle.js
+     so the application works immediately whether served via HTTP or opened directly
+     via file://.
+
+--------------------------------------------------------------------------------
+2. LIVE GRID CONNECTIONS & NODES IN SHORTEST PATH SECTION
+--------------------------------------------------------------------------------
+- Description: Adding nodes and connections in Grid Builder required saving and
+  re-importing before they would appear in the Shortest Path and Simulation tabs.
+- Root Causes Identified:
+  1. Shortest Path and Simulation views were attempting to read stale state from
+     localStorage rather than referencing the shared live Graph instance.
+  2. Tab switching lacked an automatic graph and path re-render trigger.
+  3. Empty node check (`if (nodes.length === 0) return;`) prevented SVG clearing
+     when all nodes were deleted.
+- Actions Taken:
+  1. Connected all views (builderView, pathView, simulationView) to a single shared
+     Graph instance in memory.
+  2. Added an `onGridChange()` callback that auto-syncs localStorage and triggers
+     `refreshActiveView(graph)` whenever nodes or connections are added, edited,
+     or removed.
+  3. Updated `refreshPathGraph(autoRun = true)` so that switching to the Shortest
+     Path tab automatically re-calculates paths and highlights them on the SVG
+     without requiring manual button clicks or re-saving.
+  4. Added SVG cleanup when `nodes.length === 0`.
+
+--------------------------------------------------------------------------------
+3. GRID BUILDER TABLE EDITABILITY & LACK OF VALIDATION
+--------------------------------------------------------------------------------
+- Description: In the Grid Builder section, editing node values or connection rows
+  either failed to update the live graph, lacked validation, or did not update
+  dependent dropdowns.
+- Root Causes Identified:
+  1. Missing Graph model method: `updateConnection()` did not exist in Graph.js.
+  2. Direct unsafe property mutation in builderView (`conn[field] = e.target.value`),
+     allowing invalid weights (<= 0), self-loops, and load-to-load connections.
+  3. Missing node validation in `Graph.updateNode()`: negative demands or invalid
+     priority numbers (> 9 or < 0) were accepted without errors.
+  4. Node name changes in the node table did not update connection table dropdown labels.
+  5. Adding a new node did not update connection table dropdown options.
+- Actions Taken:
+  1. Implemented `Graph.prototype.updateConnection(index, sourceId, destId, weight)`
+     with comprehensive validation (self-loops, node existence, positive weights,
+     undirected duplicate checks, and load-substation connection rules).
+  2. Implemented strict validation in `Graph.prototype.updateNode(id, field, value)`
+     for names, positive available energy, positive demand, and integer priorities 0–9.
+  3. Updated builderView inline edit handlers with try/catch blocks that revert
+     invalid input and display informative error toasts.
+  4. When a node's name changes or a new node is added, `renderConnTable()` and
+     `updateConnectionDropdowns()` are automatically refreshed.
+
+--------------------------------------------------------------------------------
+4. CSS STYLING & CLASS NAME MISMATCHES
+--------------------------------------------------------------------------------
+- Description: Node badges, status badges, editable table inputs, and animation
+  classes were either unstyled or displayed mismatched colors.
+- Root Causes Identified:
+  1. Badge class mismatch: components.css defined `.type-source`, `.type-station`,
+     `.type-substation`, `.type-load`, but JavaScript rendered `.type-badge.source`,
+     `.type-badge.station`, `.type-badge.substation`, `.type-badge.load`.
+  2. Status badge mismatch: simulationView rendered `.status-full` and `.status-none`,
+     which were missing from components.css (only `.status-allocated` existed).
+  3. Color variable divergence: variables.css defined `--source-color: #f59e0b`,
+     `--station-color: #3b82f6`, etc., but constants.js used `#ff6b35` and `#4ecdc4`.
+     This caused the legend to display colors different from the graph SVG nodes.
+  4. Missing CSS classes in components.css:
+     - `.editable-input`: unstyled form controls inside tables.
+     - `.btn-small`: unstyled delete buttons.
+     - `.priority-badge`: unstyled circular priority indicator in simulation queue.
+     - `.queue-item.active`, `.processed`, `.fully-supplied`, etc.: missing animation
+       and status border indicators.
+     - `.highlight-edge`, `.energy-flow-line`, `@keyframes dash`: missing path animations.
+- Actions Taken:
+  1. Added combined selectors in components.css for `.type-badge.source`, `.type-badge.station`,
+     `.type-badge.substation`, `.type-badge.load` with translucent backgrounds and borders.
+  2. Added `.status-badge.status-full`, `.status-partial`, `.status-none` styles.
+  3. Synced color palette between variables.css and constants.js.
+  4. Added complete styles for `.editable-input`, `.btn-small`, `.priority-badge`,
+     queue states, and animated dashed SVG path lines.
+
+--------------------------------------------------------------------------------
+5. POWER DISTRIBUTION SIMULATION CONTROLS & QUEUE PREVIEW
+--------------------------------------------------------------------------------
+- Description: Switching to the Power Distribution tab left the Priority Queue and
+  stats empty until "Start Simulation" was clicked, and Total Available Energy
+  input was hardcoded to 100 rather than reflecting the source node's energy.
+- Root Causes Identified:
+  1. `refreshSimGraph()` did not populate `#priority-queue-list` or summary stats
+     on tab switch.
+  2. `#total-energy-input` default value was never populated from the source's
+     `availableEnergy`.
+- Actions Taken:
+  1. Implemented `prepareQueuePreview(source)` in simulationView, which runs on
+     tab activation. It calculates tentative Dijkstra distances, constructs the
+     PriorityQueue, and displays all consumer cards immediately.
+  2. Automatically synchronized `#total-energy-input` to the Power Source's
+     available energy (e.g. 150 MW for the sample grid).
+  3. Summary cards (Total Supplied: 0 MW, Total Demand: sum MW, Remaining MW)
+     and header remaining energy display now update live prior to starting.
+
+--------------------------------------------------------------------------------
+6. OFFLINE / FILE PROTOCOL SAMPLE DATA LOADING
+--------------------------------------------------------------------------------
+- Description: Clicking "Load Sample Grid" failed when opening index.html via
+  file:// protocol because `fetch('./data/sample-grid.json')` is blocked by CORS.
+- Root Causes Identified:
+  1. Browser security forbids local `fetch()` calls under the file:// scheme.
+- Actions Taken:
+  1. Added `DEFAULT_SAMPLE_GRID` fallback inside storage.js.
+  2. Updated `builderView.js` to catch fetch failures and seamlessly apply the
+     embedded sample dataset, ensuring "Load Sample Grid" always succeeds.
+
+--------------------------------------------------------------------------------
+7. GRAPH RENDERER RESILIENCE & DRAG HANDLING
+--------------------------------------------------------------------------------
+- Description: Node dragging could jump or stall, and deleted nodes left ghost
+  coordinates in the position cache.
+- Root Causes Identified:
+  1. Cached positions retained deleted node IDs across layout cycles.
+  2. Drag bounds were using variable box measurements that could desync during SVG redraw.
+- Actions Taken:
+  1. Added `removeNodePosition(id)` and active node pruning in `runForceLayout()`.
+  2. Fixed coordinate bounds clamping to keep nodes within the 900x500 viewport.
+  3. Replaced duplicate import aliases in main.js.
+
+================================================================================
+VERIFICATION CHECKLIST:
+- [x] Navigation tabs switch smoothly between all 3 sections.
+- [x] Adding/editing/deleting nodes & connections immediately updates the live graph.
+- [x] Shortest Path section shows latest nodes and auto-computes paths on entry.
+- [x] Priority Queue in Power Distribution renders immediately on tab switch.
+- [x] Step and Start simulation controls animate power distribution and paths.
+- [x] All table inputs and dropdowns are fully editable with rollback validation.
+- [x] Legend colors exactly match SVG node colors.
+- [x] Dual support: Works via HTTP web server (ES Modules) and file:// (bundle fallback).
+================================================================================

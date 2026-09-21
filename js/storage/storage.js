@@ -1,0 +1,64 @@
+/**
+ * storage/storage.js
+ * Manages grid persistence via localStorage, with fallback sample data.
+ * Pure storage functions — no direct DOM manipulation.
+ */
+
+import { STORAGE_KEY } from '../constants.js';
+
+export const DEFAULT_SAMPLE_GRID = Object.freeze({
+  nodes: [
+    { id: 'S1', type: 'source', name: 'Main Power Plant', availableEnergy: 150 },
+    { id: 'P1', type: 'station', name: 'North Station' },
+    { id: 'P2', type: 'station', name: 'South Station' },
+    { id: 'SS1', type: 'substation', name: 'Downtown Sub' },
+    { id: 'SS2', type: 'substation', name: 'Industrial Sub' },
+    { id: 'L1', type: 'load', name: 'City Hospital', category: 'Hospital', demand: 30, priority: 9 },
+    { id: 'L2', type: 'load', name: 'Steel Factory', category: 'Industry', demand: 45, priority: 5 },
+    { id: 'L3', type: 'load', name: 'Residential Area A', category: 'Residential', demand: 20, priority: 3 },
+    { id: 'L4', type: 'load', name: 'Data Center', category: 'Commercial', demand: 35, priority: 7 },
+    { id: 'L5', type: 'load', name: 'School District', category: 'Education', demand: 15, priority: 6 }
+  ],
+  connections: [
+    { sourceId: 'S1', destId: 'P1', weight: 3 },
+    { sourceId: 'S1', destId: 'P2', weight: 5 },
+    { sourceId: 'P1', destId: 'SS1', weight: 2 },
+    { sourceId: 'P1', destId: 'SS2', weight: 4 },
+    { sourceId: 'P2', destId: 'SS2', weight: 2 },
+    { sourceId: 'P2', destId: 'SS1', weight: 6 },
+    { sourceId: 'SS1', destId: 'L1', weight: 1 },
+    { sourceId: 'SS1', destId: 'L3', weight: 3 },
+    { sourceId: 'SS2', destId: 'L2', weight: 2 },
+    { sourceId: 'SS2', destId: 'L4', weight: 1 },
+    { sourceId: 'SS1', destId: 'L5', weight: 2 }
+  ]
+});
+
+/**
+ * Save grid to localStorage.
+ * @param {Object} data - { nodes: Array, connections: Array }
+ * @returns {boolean}
+ */
+export function saveGrid(data) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    return true;
+  } catch (error) {
+    console.error('Failed to save grid data:', error);
+    return false;
+  }
+}
+
+/**
+ * Load grid from localStorage.
+ * @returns {Object|null}
+ */
+export function loadGrid() {
+  try {
+    const item = localStorage.getItem(STORAGE_KEY);
+    return item ? JSON.parse(item) : null;
+  } catch (error) {
+    console.error('Failed to load grid data:', error);
+    return null;
+  }
+}

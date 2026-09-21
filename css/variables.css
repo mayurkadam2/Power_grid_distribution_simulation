@@ -1,0 +1,27 @@
+:root {
+  --bg-color: #0a0a1a;
+  --bg-secondary: #111128;
+  --panel-bg: rgba(20, 20, 50, 0.8);
+  --panel-border: rgba(100, 100, 255, 0.15);
+  --text-main: #e8e8f0;
+  --text-muted: #9999bb;
+  --primary: #00d4ff;
+  --primary-hover: #00b8e0;
+  --secondary: #64748b;
+  --secondary-hover: #475569;
+  --success: #10b981;
+  --success-hover: #059669;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  
+  /* Node type colors matching SVG rendering */
+  --source-color: #ff6b35;
+  --station-color: #4ecdc4;
+  --substation-color: #a78bfa;
+  --load-color: #f472b6;
+  
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
